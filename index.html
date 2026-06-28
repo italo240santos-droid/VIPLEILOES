@@ -440,29 +440,47 @@
 
     // 🔄 Função de leitura adaptada com tratamento de redirecionamento do Google
     function sincronizar() {
-        showLoading(true);
-        fetch(`${API_URL}?op=ler`, {
-            method: "GET",
-            redirect: "follow",
-            headers: {
-                "Content-Type": "text/plain;charset=utf-8"
+    showLoading(true);
+    
+    // Cole aqui o link CSV que você copiou no Passo 1 (Substitua o link de exemplo abaixo)
+    const urlPlanilha = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3EhMYnJ33x-5p5ak6DUWsKiCTr86CTBK4yreG9iwnJIVEknCF_0umKWuNeIpm6YbGKN54OufUKDHi/pub?output=csv";
+
+    fetch(urlPlanilha)
+        .then(response => {
+            if (!response.ok) throw new Error('Erro na requisição da planilha');
+            return response.text();
+        })
+        .then(csvTexto => {
+            // Converte as linhas do CSV para Objetos Javascript mapeados pelas colunas
+            const linhas = csvTexto.split('\n').map(linha => {
+                // Divide por vírgula ou ponto e vírgula dependendo da região da sua planilha
+                return linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(campo => campo.replace(/^"|"$/g, '').trim());
+            });
+
+            const cabecalho = linhas[0];
+            dadosGlobais = [];
+
+            for (let i = 1; i < linhas.length; i++) {
+                if (!linhas[i][0]) continue; // Pula linhas vazias
+                let obj = {};
+                cabecalho.forEach((coluna, index) => {
+                    let chave = coluna.trim();
+                    // Garante compatibilidade de nomes com o resto do seu sistema
+                    if(chave === "Data Solicitação" || chave === "Data Solicitacao") chave = "Data Solicitacao";
+                    obj[chave] = linhas[i][index];
+                });
+                dadosGlobais.push(obj);
             }
-        })
-        .then(res => {
-            if (!res.ok) throw new Error("Erro na resposta da rede");
-            return res.json();
-        })
-        .then(res => {
-            dadosGlobais = res;
+
             processarDados();
             showLoading(false);
         })
-        .catch(err => {
-            console.error("Erro detalhado no sincronizar:", err);
+        .catch(erro => {
+            console.error("Erro detalhado:", erro);
+            alert("Erro ao ler dados da planilha. Verifique o console ou as configurações de publicação da planilha.");
             showLoading(false);
-            alert("Erro ao ler dados da planilha. Verifique o Console (F12).");
         });
-    }
+}
 
     function processarDados() {
         const prestadorFiltro = PERFIL_ADMIN ? document.getElementById('filtroPrestador').value : USUARIO_LOGADO;
