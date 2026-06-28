@@ -442,46 +442,61 @@
     function sincronizar() {
     showLoading(true);
     
-    // Cole aqui o link CSV que você copiou no Passo 1 (Substitua o link de exemplo abaixo)
-    const urlPlanilha = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3EhMYnJ33x-5p5ak6DUWsKiCTr86CTBK4yreG9iwnJIVEknCF_0umKWuNeIpm6YbGKN54OufUKDHi/pub?output=csv";
+    // ID extraído diretamente da sua barra de endereços do print
+    const planilhaId = "1vfep4E3YYqhfp72L024bi02fjJQ_30hOuwKtgK810u6k";
+    // Alvo da aba correta utilizando o formato tqx
+    const url = `https://docs.google.com/spreadsheets/d/${planilhaId}/gviz/tq?tqx=out:json`;
 
-    fetch(urlPlanilha)
-        .then(response => {
-            if (!response.ok) throw new Error('Erro na requisição da planilha');
-            return response.text();
-        })
-        .then(csvTexto => {
-            // Converte as linhas do CSV para Objetos Javascript mapeados pelas colunas
-            const linhas = csvTexto.split('\n').map(linha => {
-                // Divide por vírgula ou ponto e vírgula dependendo da região da sua planilha
-                return linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(campo => campo.replace(/^"|"$/g, '').trim());
+    fetch(url)
+        .then(res => res.text())
+        .then(texto => {
+            // Remove a proteção padrão do Google para isolar o JSON puro
+            const jsonPuro = JSON.parse(texto.substring(47, texto.length - 2));
+            const colunas = jsonPuro.table.cols.map(c => c.label).filter(l => l !== "");
+            const linhas = jsonPuro.table.rows;
+
+            dadosGlobais = linhas.map(linha => {
+                let obj = {};
+                linha.c.forEach((celula, i) => {
+                    let cabecalhoItem = jsonPuro.table.cols[i].label;
+                    if (cabecalhoItem) {
+                        // Trata valores nulos ou vazios e mapeia os objetos de forma idêntica à planilha
+                        let valorCelula = celula ? celula.v : "";
+                        
+                        // Tratamento para conversão de datas vindas do Google JSON (ex: Date(2026,3,16))
+                        if (typeof valorCelula === 'string' && valorCelula.startsWith('Date')) {
+                            const partes = valorCelula.match(/\d+/g);
+                            if (partes) {
+                                const ano = partes[0];
+                                const mes = String(parseInt(partes[1]) + 1).padStart(2, '0');
+                                const dia = String(partes[2]).padStart(2, '0');
+                                valorCelula = `${ano}-${mes}-${dia}`;
+                            }
+                        }
+                        obj[cabecalhoItem] = valorCelula;
+                    }
+                });
+                return obj;
             });
 
-            const cabecalho = linhas[0];
-            dadosGlobais = [];
+            // Mapeia os dados locais dos prestadores e bancos com base no que vier da planilha para não quebrar o login
+            const prestadoresUnicos = [...new Set(dadosGlobais.map(d => d.Prestador))].filter(Boolean);
+            const bancosUnicos = [...new Set(dadosGlobais.map(d => d.Banco))].filter(Boolean);
+            
+            baseLocal.prestadores = prestadoresUnicos;
+            baseLocal.bancos = bancosUnicos;
+            localStorage.setItem('base_vip_local', JSON.stringify(baseLocal));
 
-            for (let i = 1; i < linhas.length; i++) {
-                if (!linhas[i][0]) continue; // Pula linhas vazias
-                let obj = {};
-                cabecalho.forEach((coluna, index) => {
-                    let chave = coluna.trim();
-                    // Garante compatibilidade de nomes com o resto do seu sistema
-                    if(chave === "Data Solicitação" || chave === "Data Solicitacao") chave = "Data Solicitacao";
-                    obj[chave] = linhas[i][index];
-                });
-                dadosGlobais.push(obj);
-            }
-
+            atualizarDropdowns();
             processarDados();
             showLoading(false);
         })
         .catch(erro => {
-            console.error("Erro detalhado:", erro);
-            alert("Erro ao ler dados da planilha. Verifique o console ou as configurações de publicação da planilha.");
+            console.error("Erro completo da requisição:", erro);
+            alert("Erro ao ler dados da planilha. Certifique-se de que o link de compartilhamento está como 'Qualquer pessoa com o link'.");
             showLoading(false);
         });
 }
-
     function processarDados() {
         const prestadorFiltro = PERFIL_ADMIN ? document.getElementById('filtroPrestador').value : USUARIO_LOGADO;
         const statusFiltro = document.getElementById('filtroStatus').value;
