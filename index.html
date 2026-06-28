@@ -438,21 +438,29 @@
         camadaMapa.addTo(map);
     }
 
-    // Requisição HTTP externa via FETCH para ler dados da API
-    function sincronizar() {
-        showLoading(true);
-        fetch(`${API_URL}?op=ler`)
-            .then(res => res.json())
-            .then(res => {
-                dadosGlobais = res;
-                processarDados();
-                showLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                showLoading(false);
-            });
-    }
+   showLoading(true);
+    fetch(API_URL, {
+        method: 'POST',
+        redirect: 'follow', // <-- ADICIONE ESTA LINHA AQUI TAMBÉM
+        body: JSON.stringify({ op: "salvar", obj: obj })
+    })
+    .then(res => res.json())
+    // ... resto do código igual
+    .then(res => {
+        if (!res.ok) throw new Error("Erro na resposta da rede");
+        return res.json();
+    })
+    .then(res => {
+        dadosGlobais = res;
+        processarDados();
+        showLoading(false);
+    })
+    .catch(err => {
+        console.error("Erro detalhado no sincronizar:", err);
+        showLoading(false);
+        alert("Erro ao ler dados da planilha. Verifique o Console (F12).");
+    });
+}
 
     function processarDados() {
         const prestadorFiltro = PERFIL_ADMIN ? document.getElementById('filtroPrestador').value : USUARIO_LOGADO;
