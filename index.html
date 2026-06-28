@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>VIP MAIS - SISTEMA INTEGRADO DE REMOÇÕES</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700;900&family=Orbitron:wght@400;700&display=swap');
+
+    #loginScreen {
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%;
+        background: radial-gradient(circle at 70% 50%, #003366 0%, #001a33 100%);
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        z-index: 10000;
+        overflow: hidden;
+    }
+    #loginScreen::before {
+        content: "";
+        position: absolute; left: -10%; top: 0; width: 60%; height: 100%;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 800" opacity="0.1"><path d="M50,100 L450,120 L430,300 L450,550 L50,580 Z" fill="none" stroke="white" stroke-width="1"/></svg>');
+        background-repeat: no-repeat; pointer-events: none;
+    }
+    .login-container {
+        display: flex; width: 100%; max-width: 1000px; height: 600px; position: relative; z-index: 10;
+    }
+    .login-brand-side {
+        flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; padding: 40px;
+    }
+    .brand-title {
+        font-family: 'Orbitron', sans-serif; font-size: 42px; font-weight: 900; letter-spacing: 5px; margin: 0;
+        text-transform: uppercase; color: #ffffff; text-shadow: 0 0 10px rgba(0, 168, 255, 0.8);
+    }
+    .truck-neon-container {
+        width: 200px; height: 120px; margin-top: 20px;
+    }
+    .truck-svg {
+        width: 100%; height: 100%;
+    }
+    .truck-line {
+        fill: none;
+        stroke: #00a8ff;
+        stroke-width: 2;
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+        animation: draw 5s linear infinite;
+        filter: drop-shadow(0 0 5px #00a8ff);
+    }
+    @keyframes draw {
+        0% { stroke-dashoffset: 1000; opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { stroke-dashoffset: 0; opacity: 0; }
+    }
+    .login-card {
+        background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px);
+        padding: 50px; border-radius: 24px; width: 100%; max-width: 420px;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2);
+    }
+    .login-field { margin-bottom: 20px; position: relative; }
+    .login-field label { font-size: 11px; font-weight: 700; color: #555; display: block; margin-bottom: 8px; text-transform: uppercase; }
+    .login-field input { 
+        width: 100%; padding: 14px 14px 14px 45px; border: 2px solid #ddd; border-radius: 12px; font-size: 15px; transition: 0.3s;
+    }
+    .login-field input:focus { border-color: #00a8ff; outline: none; }
+    .login-field i { position: absolute; left: 15px; bottom: 15px; color: #003366; font-size: 18px; }
+
+    .btn-login { 
+        width: 100%; padding: 16px; background: #003366; color: white; border: none; border-radius: 12px; 
+        cursor: pointer; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; transition: 0.4s;
+        box-shadow: 0 10px 20px rgba(0,51,102,0.3);
+    }
+    .btn-login:hover { background: #00a8ff; transform: translateY(-2px); box-shadow: 0 15px 25px rgba(0,168,255,0.4); }
+
+    :root { 
+        --primary: #003366; 
+        --accent: #00a8ff; 
+        --bg: #f0f2f5; 
+        --white: #ffffff; 
+        --danger: #e74c3c; 
+        --success: #2ecc71; 
+        --warning: #f39c12;
+        --metallic-blue: #1a3a5a;
+    }
+    * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background: var(--bg); margin: 0; padding: 0; overflow-x: hidden; }
+    
+    #mainApp { display: none; }
+    .header-top { background: var(--primary); color: white; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; height: 60px; position: sticky; top: 0; z-index: 1000; }
+    .header-title { font-size: 16px; font-weight: 700; white-space: nowrap; }
+    .scroll-container { flex-grow: 1; margin: 0 30px; background: #000; border-radius: 4px; padding: 6px 10px; overflow: hidden; display: flex; align-items: center; }
+    #scrollRegioes { color: #00ff00; font-family: monospace; font-size: 13px; margin: 0; width: 100%; }
+    .main-container { display: flex; flex-direction: row; padding: 15px; gap: 15px; }
+    @media (max-width: 1100px) { .main-container { flex-direction: column; } .sidebar { width: 100% !important; } }
+    .sidebar { width: 260px; background: var(--white); border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: fit-content; }
+    .sidebar h5 { margin: 0 0 15px 0; color: var(--primary); border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    .content { flex: 1; display: flex; flex-direction: column; gap: 15px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+    .kpi-card { background: var(--white); padding: 15px; border-radius: 10px; border-top: 4px solid var(--primary); text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .kpi-card h4 { margin: 0; color: #666; font-size: 11px; text-transform: uppercase; }
+    .kpi-card p { margin: 8px 0 0; font-size: 22px; font-weight: 700; color: var(--primary); }
+    .bi-row { display: grid; grid-template-columns: 1fr 1fr 1fr 300px; gap: 15px; }
+    .chart-box { background: var(--white); padding: 15px; border-radius: 10px; height: 350px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+    .chart-box h5 { margin: 0 0 15px 0; font-size: 11px; color: var(--primary); text-align: center; font-weight: 700; text-transform: uppercase; }
+    .canvas-container { flex-grow: 1; position: relative; }
+    #map { height: 260px; width: 100%; border-radius: 10px; border: 1px solid #ddd; }
+    .form-box { background: var(--white); padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+    input, select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; width: 100%; }
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: 700; }
+    .btn-accent { background: var(--accent); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; }
+    .table-box { background: var(--white); border-radius: 10px; overflow-x: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1200px; }
+    th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 2px solid #eee; position: sticky; top: 0; color: var(--primary); }
+    td { padding: 10px; border-bottom: 1px solid #f1f1f1; }
+    .sla-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 10px; }
+    .sla-vencido { background: #ffdce0; color: var(--danger); }
+    .sla-prazo { background: #dcffe4; color: var(--success); }
+    .pagination { display: flex; justify-content: center; align-items: center; gap: 20px; padding: 20px; background: var(--white); margin-top: -10px; border-radius: 0 0 10px 10px; }
+    footer { background: var(--primary); color: white; padding: 30px 20px; margin-top: 30px; text-align: center; }
+    .footer-content { display: flex; justify-content: space-around; flex-wrap: wrap; max-width: 1200px; margin: 0 auto; gap: 20px; }
+    .footer-info i { margin-right: 8px; color: var(--accent); }
+    #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; z-index:9999; }
+    .frete-section { background: #eef2f7; padding: 15px; border-radius: 8px; margin-top: 15px; }
+    
+    /* ESTILOS DE BOTÕES DE AÇÕES E MODAL OBS */
+    .btn-icon { background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px; margin: 0 2px; border-radius: 4px; transition: background 0.2s; }
+    .btn-icon:hover { background: #f0f0f0; }
+    .btn-obs { background: #00a8ff !important; color: white !important; padding: 4px 8px; border-radius: 4px; font-size: 10px; border: none; cursor: pointer; font-weight: bold; }
+    .btn-obs-vazio { background: #ccc !important; color: white !important; padding: 4px 8px; border-radius: 4px; font-size: 10px; border: none; cursor: pointer; opacity: 0.6; }
+    
+    .modal-obs {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); z-index: 20000; justify-content: center; align-items: center;
+    }
+    .modal-obs-content {
+        background: white; padding: 25px; border-radius: 15px; width: 100%; max-width: 450px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3); position: relative;
+    }
+    .modal-obs-header {
+        margin-top: 0; color: #003366; display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: bold;
+    }
+    .modal-obs-body {
+        background: #f8f9fa; border-left: 4px solid #00a8ff; padding: 12px; border-radius: 4px;
+        min-height: 80px; margin: 15px 0; font-size: 13px; color: #333; line-height: 1.5; white-space: pre-wrap;
+    }
+    </style>
+</head>
+<body>
+
+<div id="loginScreen">
+    <div class="login-container">
+        <div class="login-brand-side">
+            <h1 class="brand-title">VIP MAIS</h1>
+            <div class="truck-neon-container">
+                <svg class="truck-svg" viewBox="0 0 200 100">
+                    <path class="truck-line" d="M40,20 L160,20 L170,50 L170,90 L30,90 L30,50 Z" />
+                    <path class="truck-line" d="M50,30 L150,30 L155,50 L45,50 Z" />
+                    <path class="truck-line" d="M70,90 L70,70 L130,70 L130,90" />
+                    <circle class="truck-line" cx="50" cy="75" r="8" />
+                    <circle class="truck-line" cx="150" cy="75" r="8" />
+                </svg>
+            </div>
+            <p style="letter-spacing: 8px; opacity: 0.8; font-weight: 300; margin-top: 10px;">OPERACIONAL</p>
+        </div>
+        <div class="login-card">
+            <h2>VIP MAIS</h2>
+            <h3>PRESTADORES / ADMIN</h3>
+            <div class="login-field">
+                <label>USUÁRIO</label>
+                <i class="fas fa-user"></i>
+                <input type="text" id="userInput" placeholder="Seu usuário...">
+            </div>
+            <div class="login-field">
+                <label>SENHA</label>
+                <i class="fas fa-lock"></i>
+                <input type="password" id="passInput" placeholder="••••••••">
+            </div>
+            <button class="btn-login" onclick="validarLogin()">ACESSAR SISTEMA</button>
+            
+            <div class="login-footer">
+                Acesso Integrado Vip Mais<br>
+                Email: italo.silva@vipmais.com.br<br>
+                Desenvolvedor: <strong>Italo Santos</strong><br>
+                Versão: 2.1.0 (App Script Engine)
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="mainApp">
+    <div id="loading"><b>🔄 SINCRONIZANDO COM GOOGLE SHEETS...</b></div>
+
+    <div class="header-top">
+        <div class="header-title">VIP MAIS - GESTÃO OPERACIONAL</div>
+        <div class="scroll-container">
+            <marquee id="scrollRegioes" behavior="scroll" direction="left">Aguardando processamento de dados por região...</marquee>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <input type="date" id="filtroInicio">
+            <input type="date" id="filtroFim">
+            <button onclick="sincronizar()" class="btn-accent"><i class="fas fa-filter"></i> Filtrar</button>
+            <button onclick="baixarExcel()" class="btn-primary" style="background:#27ae60; white-space: nowrap;"><i class="fas fa-file-excel"></i> Relatório</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <h5>FILTROS & BASES</h5>
+            <div id="areaAdminFiltro">
+                <label style="font-size: 10px; font-weight: bold;">PRESTADOR</label>
+                <select id="filtroPrestador" onchange="irParaPagina(1)" style="margin-bottom:10px"></select>
+            </div>
+            
+            <label style="font-size: 10px; font-weight: bold;">STATUS OPERACIONAL</label>
+            <select id="filtroStatus" onchange="irParaPagina(1)" style="margin-bottom:15px">
+                <option value="todos">Todos os Status</option>
+                <option value="Andamento">Andamento</option>
+                <option value="Aguardando Validação">Aguardando Validação</option>
+                <option value="Concluído">Concluído</option>
+                <option value="Cancelado">Cancelado</option>
+            </select>
+            
+            <div id="areaAdminBases" style="border-top:1px solid #eee; padding-top:15px">
+                <input type="text" id="novoItem" placeholder="Nome para cadastrar..." style="margin-bottom:8px">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px">
+                    <button onclick="addBase('prestadores')" class="btn-accent" style="font-size:10px; padding:6px;"> + Prestador</button>
+                    <button onclick="addBase('bancos')" class="btn-accent" style="font-size:10px; padding:6px;"> + Banco</button>
+                </div>
+            </div>
+
+            <div class="frete-section">
+                <h5 style="border:none; margin-bottom:10px">CALCULADORA KM</h5>
+                <input type="text" id="origem" placeholder="Origem" style="margin-bottom:5px">
+                <input type="text" id="destino" placeholder="Destino" style="margin-bottom:5px">
+                <input type="number" id="kmTotal" placeholder="Distância (KM)" style="margin-bottom:5px">
+                <input type="number" id="kmValor" placeholder="Valor p/ KM (R$)" style="margin-bottom:5px">
+                <button onclick="calcFrete()" class="btn-primary" style="width:100%; padding:8px">Calcular</button>
+                <p id="resFrete" style="text-align:center; font-weight:bold; margin-top:10px; color:var(--primary); font-size:14px">Total: R$ 0,00</p>
+            </div>
+            <button onclick="location.reload()" class="btn-accent" style="width:100%; margin-top:20px; background:#666">Sair / Logout</button>
+        </div>
+
+        <div class="content">
+            <div class="kpi-grid">
+                <div class="kpi-card"><h4>Faturamento Líquido</h4><p id="kpiTotal">R$ 0,00</p></div>
+                <div class="kpi-card"><h4>Total Remoções</h4><p id="kpiQtd">0</p></div>
+                <div class="kpi-card"><h4>Atrasos (Andamento)</h4><p id="kpiVencidos">0</p></div>
+                <div class="kpi-card"><h4>Eficiência (SLA)</h4><p id="kpiSla">0%</p></div>
+            </div>
+
+            <div class="bi-row">
+                <div class="chart-box">
+                    <h5>FATURAMENTO MENSAL</h5>
+                    <div class="canvas-container"><canvas id="chartMensal"></canvas></div>
+                </div>
+                <div class="chart-box">
+                    <h5>FATURAMENTO POR REGIÃO</h5>
+                    <div class="canvas-container"><canvas id="chartRegiao"></canvas></div>
+                </div>
+                <div class="chart-box">
+                    <h5>STATUS</h5>
+                    <div class="canvas-container"><canvas id="chartStatus"></canvas></div>
+                </div>
+                <div class="chart-box">
+                    <h5>MAPA DE CALOR</h5>
+                    <div id="map"></div>
+                </div>
+            </div>
+
+            <div class="form-box" id="formRemocao">
+                <h5 id="formTitulo" style="margin:0 0 15px 0">LANÇAMENTO DE REMOÇÃO</h5>
+                <input type="hidden" id="editId">
+                <div class="grid-form">
+                    <input type="date" id="dataSol" title="Data da Solicitação">
+                    <input type="date" id="prazo" title="Prazo de Entrega">
+                    <select id="selectPrestador"></select>
+                    <input type="text" id="placa" placeholder="Placa">
+                    <input type="text" id="modelo" placeholder="Modelo do Veículo">
+                    <input type="text" id="regiao" placeholder="Estado (Por Extenso)">
+                    <input type="text" id="cidade" placeholder="Cidade">
+                    <input type="text" id="uf" placeholder="UF" maxlength="2">
+                    <select id="selectBanco"></select>
+                    <input type="number" id="valor" placeholder="Valor (R$)">
+                    <input type="text" id="observacao" placeholder="Observações (Gastos extras, justificativas...)">
+                    <button class="btn-primary" id="btnSalvar" onclick="salvar()">Salvar Registro</button>
+                </div>
+            </div>
+
+            <div class="table-box">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Solicitação</th>
+                            <th>Prazo</th>
+                            <th>SLA</th>
+                            <th>Prestador</th>
+                            <th>Banco</th>
+                            <th>Placa</th>
+                            <th>Modelo</th>
+                            <th>Estado</th>
+                            <th>Cidade</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaCorpo"></tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <button onclick="mudarPagina(-1)" class="btn-accent" id="btnAnterior"><i class="fas fa-chevron-left"></i> Anterior</button>
+                <span id="infoPagina" style="font-weight: bold; font-size: 12px;">Página 1</span>
+                <button onclick="mudarPagina(1)" class="btn-accent" id="btnProximo">Próximo <i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-info">
+                <p><strong><i class="fas fa-tools"></i> VIP MAIS - GESTÃO OPERACIONAL</strong></p>
+                <p>Ferramenta de controle de alta performance para logística veicular.</p>
+            </div>
+            <div class="footer-info">
+                <p><i class="fas fa-envelope"></i> italo.silva@vipmais.com.br</p>
+                <p><i class="fab fa-whatsapp"></i> (98) 98191-9701</p>
+            </div>
+        </div>
+        <div style="margin-top: 20px; font-size: 11px; opacity: 0.8; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+            © 2026 Todos os direitos reservados ao gerenciador da ferramenta: <strong>Ítalo Santos</strong>
+        </div>
+    </footer>
+</div>
+
+<!-- Modal de Observação -->
+<div id="obsModal" class="modal-obs">
+    <div class="modal-obs-content">
+        <h3 class="modal-obs-header">
+            <i class="fas fa-info-circle" style="color:#00a8ff"></i> Observação do Lançamento
+        </h3>
+        <p style="font-size:12px; color:#666; margin-bottom:5px;"><b>Veículo (Placa):</b> <span id="obsPlaca"></span></p>
+        <div class="modal-obs-body" id="obsTexto"></div>
+        <div style="display:flex; justify-content:flex-end;">
+            <button onclick="fecharObs()" class="btn-primary" style="padding:8px 20px; font-size:12px;">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MANTENHA TODO O CORPO DO HTML E ESTILOS IGUAIS, APENAS COLOQUE ISTO NAS FUNÇÕES DO SCRIPT -->
+<script>
+    // 🔴 FIQUE ATENTO: Cole aqui a URL gerada no seu Google Apps Script!
+    const API_URL = "https://script.google.com/macros/s/AKfycbzLGHpARCMRmd5bkPtZZ73oIecMa9VjZ-3V6P0EhXXYQTx1vgBS1LHf-PRyNyCdWbn1/exec";
+
+    let dadosGlobais = [], filtrados = [];
+    let charts = {}, map, camadaMapa = L.layerGroup();
+    let baseLocal = JSON.parse(localStorage.getItem('base_vip_local')) || { prestadores: [], bancos: [] };
+    let USUARIO_LOGADO = null;
+    let PERFIL_ADMIN = false;
+    let paginaAtual = 1;
+    const itensPorPagina = 30;
+
+    function validarLogin() {
+        const user = document.getElementById('userInput').value.trim();
+        const pass = document.getElementById('passInput').value;
+
+        if(user === "italo.silva" && pass === "vipmais@1024") {
+            PERFIL_ADMIN = true;
+            USUARIO_LOGADO = "ADMIN";
+            entrarNoSistema();
+            return;
+        }
+
+        if(pass === "Vip@1024") {
+            const todosPrestadores = [...baseLocal.prestadores];
+            const existe = todosPrestadores.find(p => p.toLowerCase() === user.toLowerCase());
+
+            if(existe) {
+                PERFIL_ADMIN = false;
+                USUARIO_LOGADO = existe;
+                entrarNoSistema();
+            } else {
+                baseLocal.prestadores.push(user);
+                localStorage.setItem('base_vip_local', JSON.stringify(baseLocal));
+                PERFIL_ADMIN = false;
+                USUARIO_LOGADO = user;
+                entrarNoSistema();
+            }
+        } else {
+            alert("Senha incorreta!");
+        }
+    }
+
+    function entrarNoSistema() {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        
+        if(!PERFIL_ADMIN) {
+            document.getElementById('areaAdminFiltro').style.display = 'none';
+            document.getElementById('areaAdminBases').style.display = 'none';
+            document.getElementById('formTitulo').innerText = "CORREÇÃO DE VALOR & MUDANÇA DE CADASTRO";
+            bloquearCamposPrestador(true);
+        } else {
+            document.getElementById('formTitulo').innerText = "LANÇAMENTO DE REMOÇÃO";
+            bloquearCamposPrestador(false);
+        }
+
+        initMap();
+        atualizarDropdowns();
+        sincronizar();
+    }
+
+    function bloquearCamposPrestador(bloquear) {
+        document.getElementById('dataSol').disabled = bloquear;
+        document.getElementById('prazo').disabled = bloquear;
+        document.getElementById('selectPrestador').disabled = bloquear;
+        document.getElementById('placa').disabled = bloquear;
+        document.getElementById('modelo').disabled = bloquear;
+        document.getElementById('regiao').disabled = bloquear;
+        document.getElementById('cidade').disabled = bloquear;
+        document.getElementById('uf').disabled = bloquear;
+        document.getElementById('selectBanco').disabled = bloquear;
+    }
+
+    function initMap() {
+        map = L.map('map').setView([-15.79, -47.88], 3);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        camadaMapa.addTo(map);
+    }
+
+    // Requisição HTTP externa via FETCH para ler dados da API
+    function sincronizar() {
+        showLoading(true);
+        fetch(`${API_URL}?op=ler`)
+            .then(res => res.json())
+            .then(res => {
+                dadosGlobais = res;
+                processarDados();
+                showLoading(false);
+            })
+            .catch(err => {
+                console.error(err);
+                showLoading(false);
+            });
+    }
+
+    function processarDados() {
+        const prestadorFiltro = PERFIL_ADMIN ? document.getElementById('filtroPrestador').value : USUARIO_LOGADO;
+        const statusFiltro = document.getElementById('filtroStatus').value;
+        const inicio = document.getElementById('filtroInicio').value;
+        const fim = document.getElementById('filtroFim').value;
+
+        filtrados = dadosGlobais.filter(x => {
+            let matchP = (PERFIL_ADMIN && (prestadorFiltro === 'todos' || !prestadorFiltro)) ? true : x.Prestador.toLowerCase() === prestadorFiltro.toLowerCase();
+            let matchS = (statusFiltro === 'todos') ? true : x.Status === statusFiltro;
+            let dataX = new Date(x["Data Solicitacao"] + "T00:00:00");
+            let matchData = true;
+            if(inicio) matchData = matchData && dataX >= new Date(inicio + "T00:00:00");
+            if(fim) matchData = matchData && dataX <= new Date(fim + "T00:00:00");
+            return matchP && matchS && matchData;
+        });
+
+        const estadosContagem = {}; let totalValidos = 0;
+        filtrados.forEach(x => {
+            if (x.Status !== 'Cancelado') {
+                const estado = x.Regiao || "N/I";
+                estadosContagem[estado] = (estadosContagem[estado] || 0) + 1;
+                totalValidos++;
+            }
+        });
+        const textoScroll = Object.entries(estadosContagem)
+            .map(([est, qtd]) => `${est.toUpperCase()}: ${Math.round((qtd/totalValidos)*100)}%`)
+            .join('  •  ');
+        document.getElementById('scrollRegioes').innerText = textoScroll || "Sem dados para exibir.";
+
+        renderCharts();
+        irParaPagina(1);
+        atualizarMapa();
+    }
+
+    function renderizarTabela() {
+        const inicio = (paginaAtual - 1) * itensPorPagina;
+        const fim = inicio + itensPorPagina;
+        const itensPagina = [...filtrados].reverse().slice(inicio, fim);
+        const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+        document.getElementById('tabelaCorpo').innerHTML = itensPagina.map(d => {
+            let corRow = '#fff';
+            if(d.Status === 'Concluído') corRow = '#d4edda';
+            if(d.Status === 'Cancelado') corRow = '#f8d7da';
+            if(d.Status === 'Aguardo Validação') corRow = '#fff3cd';
+
+            let slaHtml = "";
+            if(d.Status === 'Andamento' || d.Status === 'Aguardo Validação') {
+                const prazoData = new Date(d.Prazo + "T00:00:00");
+                const diffDays = Math.ceil((prazoData - hoje) / (1000 * 60 * 60 * 24));
+                slaHtml = diffDays < 0 ? `<span class="sla-badge sla-vencido">${Math.abs(diffDays)}d Vencido</span>` : `<span class="sla-badge sla-prazo">${diffDays}d p/ vencer</span>`;
+            }
+            const cidadeUfFormatada = d.UF ? `${d.Cidade}/${d.UF}` : d.Cidade;
+            
+            let selectStatusHtml = "";
+            if (PERFIL_ADMIN) {
+                selectStatusHtml = `<select onchange="alterarStatus(${d.ID}, this.value)">
+                    <option value="Andamento" ${d.Status === 'Andamento' ? 'selected' : ''}>Andamento</option>
+                    <option value="Aguardo Validação" ${d.Status === 'Aguardo Validação' ? 'selected' : ''}>Aguardo Validação</option>
+                    <option value="Concluído" ${d.Status === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                    <option value="Cancelado" ${d.Status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+                </select>`;
+            } else {
+                selectStatusHtml = `<select onchange="alterarStatusPrestador(${d.ID}, this.value)" ${d.Status === 'Concluído' ? 'disabled' : ''}>
+                    <option value="Andamento" ${d.Status === 'Andamento' ? 'selected' : ''}>Andamento</option>
+                    <option value="Aguardo Validação" ${d.Status === 'Aguardo Validação' ? 'selected' : ''}>Aguardo Validação</option>
+                    <option value="Concluído" ${d.Status === 'Concluído' ? 'selected' : ''}>Concluir Remoção</option>
+                </select>`;
+            }
+
+            const botaoInfo = `<button class="btn-accent" style="padding:4px 8px; font-size:10px; background:#003366;" onclick="abrirModalObs('${escape(d.Observacao || 'Nenhuma observação inserida.')}')"><i class="fas fa-info-circle"></i> Inf</button>`;
+
+            const acoesHtml = PERFIL_ADMIN ? 
+                `<button onclick="editar(${d.ID})">✏️</button> <button onclick="excluir(${d.ID})">🗑️</button> ${botaoInfo}` : 
+                `<button class="btn-accent" style="background:#27ae60; padding:4px 8px;" onclick="editar(${d.ID})">✏️ Corrigir</button> ${botaoInfo}`;
+
+            return `<tr style="background:${corRow}">
+                <td>${d["Data Solicitacao"].split('-').reverse().join('/')}</td>
+                <td>${d.Prazo ? d.Prazo.split('-').reverse().join('/') : '-'}</td>
+                <td>${slaHtml}</td>
+                <td>${d.Prestador}</td>
+                <td><b>${d.Banco}</b></td>
+                <td>${d.Placa}</td>
+                <td>${d.Modelo}</td>
+                <td>${d.Regiao || '-'}</td>
+                <td>${cidadeUfFormatada}</td>
+                <td>R$ ${parseFloat(d.Valor).toFixed(2)}</td>
+                <td>${selectStatusHtml}</td>
+                <td>${acoesHtml}</td>
+            </tr>`;
+        }).join('');
+        
+        document.getElementById('infoPagina').innerText = `Página ${paginaAtual} de ${Math.ceil(filtrados.length / itensPorPagina) || 1}`;
+        document.getElementById('btnAnterior').disabled = paginaAtual === 1;
+        document.getElementById('btnProximo').disabled = paginaAtual >= Math.ceil(filtrados.length / itensPorPagina);
+    }
+
+    function abrirModalObs(texto) {
+        document.getElementById('modalObsCorpo').innerText = unescape(texto);
+        document.getElementById('modalObs').style.display = 'flex';
+    }
+
+    function fecharModalObs() {
+        document.getElementById('modalObs').style.display = 'none';
+    }
+
+    function renderCharts() {
+        let totalFaturamento = 0, vencidos = 0, concluidos = 0, baseSla = 0;
+        const hoje = new Date(); hoje.setHours(0,0,0,0);
+        const mensal = {}, regioesFaturamento = {}, statusContagem = { 'Concluído': 0, 'Andamento': 0, 'Cancelado': 0, 'Aguardo Validação': 0 };
+
+        filtrados.forEach(x => {
+            const v = parseFloat(x.Valor) || 0;
+            const st = x.Status || 'Andamento';
+            statusContagem[st] = (statusContagem[st] || 0) + 1;
+            if (st !== 'Cancelado') {
+                totalFaturamento += v;
+                baseSla++;
+                if (st === 'Concluído') concluidos++;
+                if (st === 'Andamento' && new Date(x.Prazo + "T00:00:00") < hoje) vencidos++;
+                const mesAno = x["Data Solicitacao"].substring(0, 7);
+                mensal[mesAno] = (mensal[mesAno] || 0) + v;
+                const r = x.Regiao || "N/I";
+                regioesFaturamento[r] = (regioesFaturamento[r] || 0) + v;
+            }
+        });
+
+        document.getElementById('kpiTotal').innerText = `R$ ${totalFaturamento.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+        document.getElementById('kpiQtd').innerText = filtrados.length;
+        document.getElementById('kpiVencidos').innerText = vencidos;
+        document.getElementById('kpiSla').innerText = baseSla > 0 ? Math.round((concluidos/baseSla)*100)+'%' : '0%';
+
+        if(charts.m) charts.m.destroy();
+        charts.m = new Chart(document.getElementById('chartMensal'), {
+            type: 'bar',
+            data: { labels: Object.keys(mensal).sort().map(m => m.split('-').reverse().join('/')), datasets: [{ label: 'Faturamento', data: Object.keys(mensal).sort().map(m => mensal[m]), backgroundColor: '#003366' }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        const regs = Object.keys(regioesFaturamento);
+        if(charts.r) charts.r.destroy();
+        charts.r = new Chart(document.getElementById('chartRegiao'), {
+            type: 'bar',
+            data: { labels: regs, datasets: [{ label: 'R$ por Região', data: regs.map(r => regioesFaturamento[r]), backgroundColor: '#00a8ff' }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        if(charts.s) charts.s.destroy();
+        charts.s = new Chart(document.getElementById('chartStatus'), {
+            type: 'doughnut',
+            data: { labels: ['Concluído', 'Andamento', 'Cancelado', 'Validação'], datasets: [{ data: [statusContagem['Concluído'], statusContagem['Andamento'], statusContagem['Cancelado'], statusContagem['Aguardo Validação']], backgroundColor: ['#2ecc71', '#f39c12', '#e74c3c', '#00a8ff'] }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } } }
+        });
+    }
+
+    async function atualizarMapa() {
+        if (!filtrados || filtrados.length === 0) {
+            if(camadaMapa) camadaMapa.clearLayers();
+            return;
+        }
+        camadaMapa.clearLayers();
+        const cidades = {};
+        filtrados.forEach(d => { 
+            if(d.Cidade) {
+                const chave = d.UF ? `${d.Cidade}, ${d.UF}, Brazil` : `${d.Cidade}, Brazil`;
+                cidades[chave] = (cidades[chave] || 0) + 1; 
+            }
+        });
+        for (const [localizacao, qtd] of Object.entries(cidades)) {
+            try {
+                const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(localizacao)}`);
+                const data = await r.json();
+                if(data && data.length > 0) {
+                    const lat = data[0].lat; const lon = data[0].lon;
+                    const raioCalculado = 15000 + (qtd * 5000); 
+                    L.circle([lat, lon], {
+                        color: 'red', fillColor: '#f03', fillOpacity: 0.5,
+                        radius: raioCalculado > 50000 ? 50000 : raioCalculado
+                    }).addTo(camadaMapa).bindPopup(`<b>${localizacao.split(',')[0]}</b><br>Remoções: ${qtd}`);
+                }
+            } catch(e) { console.warn("Erro mapa:", localizacao); }
+        }
+    }
+
+    // Envio POST Externo via FETCH para Salvar
+    function salvar() {
+        const id = document.getElementById('editId').value;
+        if(!id && !PERFIL_ADMIN) return alert("Prestadores só podem alterar cadastros existentes!");
+
+        let obj = {};
+
+        if (!PERFIL_ADMIN) {
+            let statusAtual = filtrados.find(x => x.ID == id).Status;
+            obj = {
+                ID: parseInt(id),
+                Valor: parseFloat(document.getElementById('valor').value) || 0,
+                Observacao: document.getElementById('observacao').value,
+                Status: statusAtual, 
+                isPrestadorEdit: true
+            };
+        } else {
+            obj = {
+                ID: id ? parseInt(id) : Date.now(),
+                "Data Solicitacao": document.getElementById('dataSol').value,
+                Prazo: document.getElementById('prazo').value,
+                Prestador: document.getElementById('selectPrestador').value,
+                Placa: document.getElementById('placa').value.toUpperCase(),
+                Modelo: document.getElementById('modelo').value,
+                Regiao: document.getElementById('regiao').value,
+                Cidade: document.getElementById('cidade').value,
+                UF: document.getElementById('uf').value.toUpperCase(),
+                Banco: document.getElementById('selectBanco').value,
+                Valor: parseFloat(document.getElementById('valor').value) || 0,
+                Observacao: document.getElementById('observacao').value,
+                Status: id ? filtrados.find(x => x.ID == id).Status : 'Andamento',
+                isPrestadorEdit: false
+            };
+            if(!obj["Data Solicitacao"] || !obj.Valor) return alert("Data e Valor são obrigatórios.");
+        }
+
+        showLoading(true);
+        fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ op: "salvar", obj: obj })
+        })
+        .then(res => res.json())
+        .then(res => {
+            dadosGlobais = res;
+            limparForm();
+            processarDados();
+            showLoading(false);
+        })
+        .catch(err => { console.error(err); showLoading(false); });
+    }
+
+    function alterarStatus(id, novoStatus) {
+        const item = dadosGlobais.find(x => x.ID == id);
+        item.Status = novoStatus;
+        item.isPrestadorEdit = false;
+        
+        showLoading(true);
+        fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ op: "salvar", obj: item })
+        })
+        .then(res => res.json())
+        .then(res => { dadosGlobais = res; processarDados(); showLoading(false); })
+        .catch(err => { console.error(err); showLoading(false); });
+    }
+
+    function alterarStatusPrestador(id, valorDropdown) {
+        const item = dadosGlobais.find(x => x.ID == id);
+        item.Status = (valorDropdown === "Concluído") ? "Aguardo Validação" : valorDropdown;
+        item.isPrestadorEdit = true;
+        
+        showLoading(true);
+        fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ op: "salvar", obj: item })
+        })
+        .then(res => res.json())
+        .then(res => { dadosGlobais = res; processarDados(); showLoading(false); })
+        .catch(err => { console.error(err); showLoading(false); });
+    }
+
+    function excluir(id) {
+        if(!confirm("Excluir definitivamente este registro?")) return;
+        showLoading(true);
+        fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ op: "excluir", id: id })
+        })
+        .then(res => res.json())
+        .then(res => { dadosGlobais = res; processarDados(); showLoading(false); })
+        .catch(err => { console.error(err); showLoading(false); });
+    }
+
+    function editar(id) {
+        const item = dadosGlobais.find(x => x.ID == id);
+        document.getElementById('editId').value = item.ID;
+        document.getElementById('dataSol').value = item["Data Solicitacao"];
+        document.getElementById('prazo').value = item.Prazo;
+        document.getElementById('selectPrestador').value = item.Prestador;
+        document.getElementById('placa').value = item.Placa;
+        document.getElementById('modelo').value = item.Modelo;
+        document.getElementById('regiao').value = item.Regiao;
+        document.getElementById('cidade').value = item.Cidade;
+        document.getElementById('uf').value = item.UF || "";
+        document.getElementById('selectBanco').value = item.Banco;
+        document.getElementById('valor').value = item.Valor;
+        document.getElementById('observacao').value = item.Observacao || "";
+        
+        document.getElementById('btnSalvar').innerText = "Atualizar Registro";
+        window.scrollTo({ top: document.querySelector('.form-box').offsetTop - 100, behavior: 'smooth' });
+    }
+
+    function limparForm() {
+        document.getElementById('editId').value = "";
+        document.getElementById('dataSol').value = "";
+        document.getElementById('prazo').value = "";
+        document.getElementById('placa').value = "";
+        document.getElementById('modelo').value = "";
+        document.getElementById('regiao').value = "";
+        document.getElementById('cidade').value = "";
+        document.getElementById('uf').value = "";
+        document.getElementById('valor').value = "";
+        document.getElementById('observacao').value = "";
+        document.getElementById('btnSalvar').innerText = "Salvar Registro";
+    }
+
+    function addBase(tipo) {
+        const val = document.getElementById('novoItem').value.trim();
+        if(!val) return;
+        if(!baseLocal[tipo].includes(val)) {
+            baseLocal[tipo].push(val);
+            localStorage.setItem('base_vip_local', JSON.stringify(baseLocal));
+            atualizarDropdowns();
+            document.getElementById('novoItem').value = "";
+        }
+    }
+
+    function atualizarDropdowns() {
+        const pOps = '<option value="todos">Todos Prestadores</option>' + baseLocal.prestadores.map(x => `<option value="${x}">${x}</option>`).join('');
+        const bOps = '<option value="">Selecione o Banco</option>' + baseLocal.bancos.map(x => `<option value="${x}">${x}</option>`).join('');
+        document.getElementById('filtroPrestador').innerHTML = pOps;
+        document.getElementById('selectPrestador').innerHTML = pOps;
+        document.getElementById('selectBanco').innerHTML = bOps;
+    }
+
+    function calcFrete() {
+        const km = parseFloat(document.getElementById('kmTotal').value) || 0;
+        const val = parseFloat(document.getElementById('kmValor').value) || 0;
+        document.getElementById('resFrete').innerText = `Total: R$ ${(km * val).toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+    }
+
+    function baixarExcel() {
+        if (filtrados.length === 0) return alert("Não há dados para exportar.");
+        const dadosExport = filtrados.map(item => ({
+            "ID": item.ID,
+            "Solicitação": item["Data Solicitacao"].split('-').reverse().join('/'),
+            "Prazo": item.Prazo ? item.Prazo.split('-').reverse().join('/') : '',
+            "Prestador": item.Prestador,
+            "Placa": item.Placa,
+            "Modelo": item.Modelo,
+            "Estado/Região": item.Regiao,
+            "Cidade": item.UF ? `${item.Cidade}/${item.UF}` : item.Cidade,
+            "Banco": item.Banco,
+            "Valor (R$)": item.Valor,
+            "Status": item.Status,
+            "Observação Extra": item.Observacao
+        }));
+        const ws = XLSX.utils.json_to_sheet(dadosExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Relatório VIP MAIS");
+        XLSX.writeFile(wb, `Relatorio_${USUARIO_LOGADO}_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
+    }
+
+    function mudarPagina(direcao) { paginaAtual += direcao; renderizarTabela(); }
+    function irParaPagina(num) { paginaAtual = num; renderizarTabela(); }
+    function showLoading(s) { if(document.getElementById('loading')) document.getElementById('loading').style.display = s ? 'flex' : 'none'; }
+</script>
+</body>
+</html>
